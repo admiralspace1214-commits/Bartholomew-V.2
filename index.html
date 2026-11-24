@@ -111,6 +111,24 @@ const $ = id => document.getElementById(id);
 const STORE = "little-brain-v1";
 const vocab = ["i","you","love","like","great","good","awesome","happy","nice","fun","yes","enjoy","hate","bad","awful","sad","boring","no","terrible","dislike","not","really","this","it","is","very","am","the","game","building","cool","wow"];
 let state = load();
+  // BARTHOLOMEW 2.0 — CORE PERSONALITY
+const defaultPersonality = {
+  curiosity: 85,
+  friendliness: 90,
+  humor: 65,
+  confidence: 55,
+  patience: 90
+};
+
+// Keep existing personality values when loading saved data.
+state.personality = {
+  ...defaultPersonality,
+  ...(state.personality || {})
+};
+
+function personalityChoice(options) {
+  return options[Math.floor(Math.random() * options.length)];
+}
 function freshNet(){return {w1:Array.from({length:vocab.length},()=>Array.from({length:8},()=>Math.random()*0.3-0.15)),b1:Array(8).fill(0),w2:Array.from({length:8},()=>Math.random()*0.3-0.15),b2:0,steps:0};}
 function load(){try{const s=JSON.parse(localStorage.getItem(STORE));if(s&&s.net&&s.memories&&s.examples)return s;}catch(e){}return {memories:[],examples:[],net:freshNet(),chat:[],trained:0};}
 function save(){localStorage.setItem(STORE,JSON.stringify(state));renderStats();renderMemories();drawNet();}
