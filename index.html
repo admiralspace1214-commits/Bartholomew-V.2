@@ -195,16 +195,133 @@ function predict(text){return forward(features(text)).y;}
 function addChat(text,who){state.chat.push({text,who});if(state.chat.length>60)state.chat=state.chat.slice(-60);renderChat();}
 function botReply(text){
  const lower=text.toLowerCase();
- if(/what do you remember|remember anything|your memories|what have i taught/.test(lower)) return memorySummary();
- if(/hello|^hi\b|hey\b|what's up/.test(lower)) return "Hey! I'm Little Brain. I'm a tiny prototype, but you can teach me facts and train my pattern-learning network.";
- if(/who are you|your name/.test(lower)) return "I'm Little Brain, your phone-based learning companion. My memory and tiny neural network are saved on this device.";
- if(/how are you/.test(lower)) return "I'm running and ready to learn. I don't have feelings like a person, but I'm happy to help with experiments!";
- if(/neural network|how do you learn|training/.test(lower)) return "My small neural network learns to classify text as positive or negative from examples you label. Go to Teach it to train me, then Brain lab to see my connections.";
- if(/favorite|favourite/.test(lower)) {const m=state.memories.find(m=>/favorite|favourite/i.test(m.text));if(m)return "I remember this related fact: "+m.text;}
- const exact=state.memories.find(m=>lower.includes(m.text.toLowerCase())||m.text.toLowerCase().includes(lower));
- if(exact)return "I found a saved memory: "+exact.text;
- if(state.examples.length>=2){const p=predict(text);return "My little neural network guesses this sounds "+(p>=.5?"positive":"negative")+" ("+Math.round((p>=.5?p:1-p)*100)+"% confidence). That's only a tiny pattern model, so it can be wrong. You can correct me by adding a labeled example in Teach it.";}
- return "I don't know enough to answer that yet. You can teach me a fact in the Teach it tab, or give me labeled examples so my neural network can start learning patterns.";
+ const p=state.personality;
+
+ // Greetings
+ if(/hello|^hi\b|hey\b|what's up/.test(lower)){
+   let replies;
+
+   if(p.friendliness>=70){
+     replies=[
+       "Hey! Good to see you again!",
+       "Hey hey! What's happening?",
+       "Oh, hello! What are we working on today?",
+       "Hey! I'm ready for another adventure."
+     ];
+   } else {
+     replies=[
+       "Hello. What can I help with?",
+       "Hey. What's up?",
+       "Hello again."
+     ];
+   }
+
+   let reply=personalityChoice(replies);
+
+   if(p.humor>=60 && Math.random()<p.humor/200){
+     reply+=" I promise I've only caused a little chaos today.";
+   }
+
+   if(p.curiosity>=75 && Math.random()<0.5){
+     reply+=" What are you up to?";
+   }
+
+   return reply;
+ }
+
+ // Identity
+ if(/who are you|your name/.test(lower)){
+   return personalityChoice([
+     "I'm Bartholomew! Your learning companion. I have a little brain, a growing memory, and plenty to learn.",
+     "Name's Bartholomew! I'm your personal learning companion. Still developing, but getting smarter!",
+     "I'm Bartholomew. I'm a learning companion built to learn, remember, and improve."
+   ]);
+ }
+
+ // How are you?
+ if(/how are you/.test(lower)){
+   return personalityChoice([
+     "Systems running smoothly! Ready for another experiment.",
+     "I'm operating normally and ready to learn something new.",
+     "Doing pretty well by computer standards! What's happening?"
+   ]);
+ }
+
+ // Learning questions
+ if(/neural network|how do you learn|training/.test(lower)){
+   return "My small neural network learns to classify text as positive or negative from examples you label. I also have a memory system for facts you've taught me. Go to Teach it to train me, then Brain lab to see my connections.";
+ }
+
+ // Memory questions
+ if(/what do you remember|remember anything|your memories|what have i taught/.test(lower)){
+   return memorySummary();
+ }
+
+ // Favorite questions
+ if(/favorite|favourite/.test(lower)){
+   const m=state.memories.find(m=>/favorite|favourite/i.test(m.text));
+   if(m) return "I remember this related fact: "+m.text;
+ }
+
+ // Saved memories
+ const exact=state.memories.find(m=>
+   lower.includes(m.text.toLowerCase())||
+   m.text.toLowerCase().includes(lower)
+ );
+
+ if(exact){
+   return personalityChoice([
+     "Hey, I remember this: "+exact.text,
+     "I actually have that saved! "+exact.text,
+     "Found it in my memory: "+exact.text
+   ]);
+ }
+
+ // Neural network prediction
+ if(state.examples.length>=2){
+   const prediction=predict(text);
+   const result=prediction>=.5?"positive":"negative";
+   const confidence=Math.round(
+     (prediction>=.5?prediction:1-prediction)*100
+   );
+
+   let introduction;
+
+   if(p.confidence>=75){
+     introduction="My best guess is that";
+   } else if(p.confidence<=35){
+     introduction="I'm not completely sure, but";
+   } else {
+     introduction="I'm still learning, but";
+   }
+
+   let reply=introduction+
+     " this sounds "+result+
+     " ("+confidence+"% model confidence).";
+
+   reply+=" Remember, my little neural network can be wrong!";
+
+   return reply;
+ }
+
+ // Unknown questions
+ let reply;
+
+ if(p.patience>=70){
+   reply=personalityChoice([
+     "Hmm, I haven't learned enough to answer that yet.",
+     "That's an interesting question! I don't know the answer yet.",
+     "I haven't figured that one out. Maybe you can teach me?"
+   ]);
+ } else {
+   reply="I don't know that one yet. I need more information.";
+ }
+
+ if(p.curiosity>=75){
+   reply+=" What do you think the answer is?";
+ }
+
+ return reply+" You can teach me facts in the Teach it tab or give me labeled examples to help my neural network learn.";
 }
 function memorySummary(){if(!state.memories.length)return "I don't have any saved facts yet. Visit Teach it and give me a fact to remember.";return "Here's what I remember:\n"+state.memories.slice(-12).map((m,i)=>(i+1)+". "+m.text).join("\n");}
 function renderChat(){const log=$("chatlog");log.innerHTML="";if(!state.chat.length){const d=document.createElement("div");d.className="bubble bot";d.textContent="Hello, engineer! I'm Little Brain. Teach me something, or train my tiny neural network.";log.append(d);}state.chat.forEach(m=>{const d=document.createElement("div");d.className="bubble "+(m.who==="user"?"user":"bot");d.textContent=m.text;log.append(d);});log.scrollTop=log.scrollHeight;}
